@@ -1,10 +1,10 @@
-from numpy import vectorize
+from .util import vectorize_method
 
 class FiberMode(object):
     """
     Mode base class, for guided as well as radiative modes
     """
-    @vectorize
+    @vectorize_method
     def e_r(self, R, phi, z):
         """
         Delegates the calculation to e_r_core and e_r_cladding
@@ -19,7 +19,7 @@ class FiberMode(object):
             result = self.e_r_cladding(R, phi, z)
         return result*self.implicit(R, phi, z)
 
-    @vectorize
+    @vectorize_method
     def e_phi(self, R, phi, z):
         """
         Delegates the calculation to e_phi_core and e_phi_cladding
@@ -34,7 +34,7 @@ class FiberMode(object):
             result = self.e_phi_cladding(R, phi, z)
         return result*self.implicit(R, phi, z)
 
-    @vectorize
+    @vectorize_method
     def e_z(self, R, phi, z):
         """
         Delegates the calculation to e_z_core and e_z_cladding
@@ -44,9 +44,9 @@ class FiberMode(object):
         :return:
         """
         if R <= 1:
-            return self.e_z_core(R, phi, z)
+            result = self.e_z_core(R, phi, z)
         else:
-            return self.e_z_cladding(R, phi, z)
+            result = self.e_z_cladding(R, phi, z)
         return result*self.implicit(R, phi, z)
 
     def e_r_core(self, R, phi, z):
@@ -69,3 +69,6 @@ class FiberMode(object):
 
     def implicit(self, R, phi, z):
         return 1.0 + 0.0j
+
+    def discrete_modes(self, *args, **kwargs):
+        pass

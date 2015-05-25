@@ -1,5 +1,7 @@
+from functools import wraps
 from scipy.special import hankel1, hankel2
-import inspect
+from inspect import ismethod
+import numpy as np
 
 def hankel(j, nu, z):
     if j==1:
@@ -14,4 +16,19 @@ def hankelp(j, nu, z):
     """
     return hankel(j, nu-1, z) - nu*hankel(j, nu, z)/z
 
+
+def vectorize_method(func):
+    """
+    A wrapper for numpy's vectorize which works for methods without explicitly passing the object
+    :return:
+    """
+    @wraps(func)
+    def inner(obj, *iargs, **ikwargs):
+
+        def functionalized_method(*args, **kwargs):
+            return func(obj, *args, **kwargs)
+
+        return np.vectorize(functionalized_method, otypes=[np.dtype('c16')])(*iargs, **ikwargs)
+        #return np.vectorize(functionalized_method)(*iargs, **ikwargs)
+    return inner
 
