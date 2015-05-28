@@ -1,36 +1,49 @@
 import numpy as np
+from scipy.integrate import quad
 from pyfibers.modes.lekien import LeKienRadMode
 
 
 class RadCouplingTensor(object):
+
     def __init__(self, fiber):
         self.fiber = fiber
         self.mode_class = fiber.rad_mode_class
+        self.calls = 0
 
     def spherical_basis(self, phi):
-        return np.matrix(
+        return np.matrix([
             [-np.exp(-1j*phi), 1j*np.exp(1j*phi), 0         ],
             [np.exp(-1j*phi),  1j*np.exp(1j*phi), 0         ],
             [0,                0,                 np.sqrt(2)]
-        )/np.sqrt(2)
+        ], dtype='c16')/np.sqrt(2)
 
-    def get_matrix(self, R1, R2, phi1, phi2, z1, z2):
+    def get_coupling(self, atom_j, atom_k, nu_j, nu_k):
+        Uj = self.spherical_basis(atom_j.phi)
+        Uk = self.spherical_basis(atom_k.phi)
+
         def integrand(U):
-            for mode in self.mode_class.discrete_modes(U):
-                e_j = np.array([
-                    mode.e_r(R1, phi1, z1),
-                    mode.e_phi(R1, phi1, z1),
-                    mode.e_z(R1, phi1, z1)
-                ]).transpose()  # column
-                e_k = np.array([
-                    mode.e_r(R2, phi2, z2),
-                    mode.e_phi(R2, phi2, z2),
-                    mode.e_z(R2, phi2, z2)
-                ])  # row
+            coupling = 0.+0j
+            for mode in self.mode_class.discrete_modes(self.fiber, U=U, m_max=4):
+                e_j = np.matrix(mode.e_vector(atom_j)).transpose()
+                e_k = np.matrix(mode.e_vector(atom_k)).transpose()
 
-                tensor_matrix = np.dot(e_j, e_k.conjugate())
+                d_j = np.matrix([
+                    atom_j.dipole(nu_j, 1),
+                    atom_j.dipole(nu_j, 0),
+                    atom_j.dipole(nu_j, -1),
+                ]).transpose()
 
+                d_k = np.matrix([
+                    atom_k.dipole(nu_k, 1),
+                    atom_k.dipole(nu_k, 0),
+                    atom_k.dipole(nu_k, -1),
+                ]).transpose()
 
+                tensor_matrix = e_j*e_k.transpose().conjugate()
 
+                coupling += d_j.transpose() * tensor_matrix * d_k.conjugate() / mode.norm()
+            self.calls += 1
+            return coupling[0, 0]
 
-#    def get_element(self):
+        return quad(lambda x: np.imag(integrand(x)), self.mode_class.U_min(self.fiber), self.mode_class.U_max(self.fiber))
+

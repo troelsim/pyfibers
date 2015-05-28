@@ -1,37 +1,47 @@
 from .base import FiberMode
-from .util import hankel, hankelp
+from .util import hankel, hankelp, cache_for_fiber
 from scipy.special import jv, jvp, kv, kvp
 from scipy.optimize import brentq
-from numpy import sqrt, pi, exp
+from scipy.integrate import quad
+from numpy import sqrt, pi, exp, inf
 
 from pyfibers.constants import *
 
 
 class LeKienRadMode(FiberMode):
-    _rho = 1
 
     @classmethod
-    def discrete_modes(cls, m_max=10, n=1.45, nc=1.0, V=2, U=3):
+    def discrete_modes(cls, fiber, m_max=10, U=3):
         """
         Iterate over all descrete modal combinations, yielding modes
         :param m_max: max value of the azimuthal wavenumber
         """
         for nu in range(-m_max,m_max+1):
             for pol in [+1, -1]:
-                yield cls(nu, n, nc, V, U, pol)
+                yield cls(fiber, nu, U, pol)
 
 
-    def __init__(self, nu, n, nc, V, U, pol=1):
+    def __init__(self, fiber, nu, U, pol=1):
+        self.fiber = fiber
         self.nu = nu
         self.pol = pol
-        self.n = n
-        self.nc = nc
-        self.V = V
+        self.n = fiber.n
+        self.nc = fiber.nc
+        self.V = fiber.V
+        self.rho = fiber.rho
         Umax = self.rk*self.n
         Umin = self.V
         if U < Umin or U > Umax:
             raise ValueError("U is %f, but must be between %f and %f" % (U, Umin, Umax))
         self.U = U
+
+    @staticmethod
+    def U_max(fiber):
+        return fiber.rk*fiber.n
+
+    @staticmethod
+    def U_min(fiber):
+        return fiber.V
 
     def e_r_core(self, R, phi, z):
         return 1j/self.U**2*(
@@ -99,25 +109,27 @@ class LeKienRadMode(FiberMode):
     def rk(self):
         return self.V/sqrt(self.n**2-self.nc**2)
 
-    @property
-    def rho(self):
-        return self._rho or 1  # TODO what shall we do about this?
 
+    @cache_for_fiber
     def Vj(self, j):
         return self.nu*self.rho*self.rb*self.rk / \
             (self.Q**2*self.U**2)*(self.nc**2-self.n**2)*jv(self.nu, self.U)*hankel(j, self.nu, self.Q).conjugate()
 
+    @cache_for_fiber
     def Mj(self, j):
         return self.rho/self.U*jvp(self.nu, self.U, 1)*hankel(j, self.nu, self.Q).conjugate() - \
             self.rho/self.Q*jv(self.nu, self.U)*hankelp(j, self.nu, self.Q).conjugate()
 
+    @cache_for_fiber
     def Lj(self, j):
         return self.rho*self.n**2/self.U*jvp(self.nu, self.U, 1)*hankel(j, self.nu, self.Q).conjugate() - \
             self.rho/self.Q*self.nc**2*jv(self.nu, self.U)*hankelp(j, self.nu, self.Q).conjugate()
 
+    @cache_for_fiber
     def Cj(self, j):
         return (-1)**j * 1j*pi*self.Q**2/(4*self.rho*self.nc**2)*(self.A*self.Lj(j) + 1j*MU0*SOL*self.B*self.Vj(j))
 
+    @cache_for_fiber
     def Dj(self, j):
         return (-1)**(j-1) * 1j*pi*self.Q**2/(4*self.rho)*(1j*EPS0*SOL*self.A*self.Vj(j) - self.B*self.Mj(j))
 
@@ -165,11 +177,17 @@ class LeKienGuidedMode(FiberMode):
         )
 
     @property
+    @cache_for_fiber
     def rb(self):
         return sqrt(
             (self.fiber.n**2 * self.W**2 + self.fiber.nc**2 * self.U**2) /
             (self.fiber.n**2 - self.fiber.nc**2)
         )
+
+    @property
+    @cache_for_fiber
+    def rk(self):
+        return self.fiber.V/sqrt(self.fiber.n**2-self.fiber.nc**2)
 
     @classmethod
     def getUW(cls, fiber):
@@ -206,22 +224,39 @@ class LeKienGuidedMode(FiberMode):
     def e_phi_core(self, R, phi, z):
         U = self.U
         W = self.W
-        return - W/U * kv(1, W)/jv(1, U) * (
+        return -self.pol * W/U * kv(1, W)/jv(1, U) * (
             (1-self.s)*jv(0, U*R) + (1+self.s)*jv(2, U*R)
         )
 
     def e_phi_cladding(self, R, phi, z):
         U = self.U
         W = self.W
-        return - (
+        return -self.pol * (
             (1-self.s)*kv(0, W*R) - (1+self.s)*kv(2, W*R)
         )
 
     def e_z_core(self, R, phi, z):
-        return 2*self.W/self.rb * kv(1, self.W)/jv(1, self.U)*jv(1, self.U*R)
+        return 2*self.f*self.W/self.rb * kv(1, self.W)/jv(1, self.U)*jv(1, self.U*R)
 
     def e_z_cladding(self, R, phi, z):
-        return 2*self.W/self.rb * kv(1, self.W*R)
+        return 2*self.f*self.W/self.rb * kv(1, self.W*R)
 
     def implicit(self, R, phi, z):
-        return 1+0j
+        return exp(1j*self.f*self.rb/self.fiber.rho*z+1j*self.pol*phi)
+
+    @cache_for_fiber
+    def norm(self):
+        result, err = quad(
+            lambda R: 2*pi*R*(
+                (self.n**2 if R<1 else self.nc**2)
+                * sqrt(
+                    abs(self.e_z(R,0,0))**2 +
+                    abs(self.e_phi(R,0,0))**2 +
+                    abs(self.e_z(R,0,0))**2
+                )
+            ),
+            0,
+            inf
+        )
+        return result
+

@@ -41,3 +41,7 @@ class LeKienFiber(Fiber):
             return np.sqrt(self.V**2-result**2), result
         else:
             return None, None
+
+    @property
+    def rk(self):
+        return self.V/np.sqrt(self.n**2-self.nc**2)

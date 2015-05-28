@@ -1,3 +1,4 @@
+from numpy import array
 from .util import vectorize_method
 
 class FiberMode(object):
@@ -48,6 +49,19 @@ class FiberMode(object):
         else:
             result = self.e_z_cladding(R, phi, z)
         return result*self.implicit(R, phi, z)
+
+    @vectorize_method
+    def e_vector(self, atom):
+        """
+        Returns the field vector in (R, phi, z) basis at an atom's position
+        :param atom: Atom
+        :return: NumPy array (column)
+        """
+        return array([
+            self.e_r(atom.R, atom.phi, atom.z),
+            self.e_phi(atom.R, atom.phi, atom.z),
+            self.e_z(atom.R, atom.phi, atom.z)
+        ]).transpose()
 
     def e_r_core(self, R, phi, z):
         pass

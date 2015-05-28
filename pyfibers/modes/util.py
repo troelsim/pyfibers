@@ -32,3 +32,22 @@ def vectorize_method(func):
         #return np.vectorize(functionalized_method)(*iargs, **ikwargs)
     return inner
 
+
+def cache_for_fiber(func):
+    """
+    Only evaluate if the object's `fiber` member hasn't changed
+    :param func:
+    :return:
+    """
+    @wraps(func)
+    def inner(obj, *args):
+        key = ":".join([repr(val) for val in
+                        [func.__name__, obj.fiber.n, obj.fiber.nc, obj.fiber.rho, obj.fiber.V] +
+                        list(args)
+                        ])
+        if not hasattr(obj, '_cache'):
+            obj._cache={}
+        if key not in obj._cache:
+            obj._cache[key] = func(obj, *args)
+        return obj._cache[key]
+    return inner
