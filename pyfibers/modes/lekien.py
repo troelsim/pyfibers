@@ -18,10 +18,10 @@ class LeKienRadMode(FiberMode):
         """
         for nu in range(-m_max,m_max+1):
             for pol in [+1, -1]:
-                yield cls(fiber, nu, U, pol)
+                for f in [+1, -1]:
+                    yield cls(fiber, nu, U, pol, f=f)
 
-
-    def __init__(self, fiber, nu, U, pol=1):
+    def __init__(self, fiber, nu, U, pol=1, f=1):
         self.fiber = fiber
         self.nu = nu
         self.pol = pol
@@ -29,6 +29,7 @@ class LeKienRadMode(FiberMode):
         self.nc = fiber.nc
         self.V = fiber.V
         self.rho = fiber.rho
+        self.f = f
         Umax = self.rk*self.n
         Umin = self.V
         if U < Umin or U > Umax:
@@ -78,7 +79,7 @@ class LeKienRadMode(FiberMode):
         ])
 
     def implicit(self, R, phi, z):
-        return exp(1j*self.rb/self.rho*z+1j*self.nu*phi)
+        return exp(1j*self.f*self.rb/self.rho*z+1j*self.nu*phi)
 
     def norm(self):
         return 2*pi*self.rk*self.rho/self.Q**2/EPSMMU*(self.nc**2*abs(self.Cj(1))**2+MU0/EPS0*abs(self.Dj(1))**2)

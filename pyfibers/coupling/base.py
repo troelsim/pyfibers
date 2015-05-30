@@ -29,14 +29,14 @@ class RadCouplingTensor(object):
 
                 d_j = np.matrix([
                     atom_j.dipole(nu_j, 1),
-                    atom_j.dipole(nu_j, 0),
                     atom_j.dipole(nu_j, -1),
+                    atom_j.dipole(nu_j, 0),
                 ]).transpose()
 
                 d_k = np.matrix([
                     atom_k.dipole(nu_k, 1),
-                    atom_k.dipole(nu_k, 0),
                     atom_k.dipole(nu_k, -1),
+                    atom_k.dipole(nu_k, 0),
                 ]).transpose()
 
                 tensor_matrix = e_j*e_k.transpose().conjugate()
@@ -45,5 +45,5 @@ class RadCouplingTensor(object):
             self.calls += 1
             return coupling[0, 0]
 
-        return quad(lambda x: np.imag(integrand(x)), self.mode_class.U_min(self.fiber), self.mode_class.U_max(self.fiber))
+        return quad(lambda x: np.real(integrand(x)), self.mode_class.U_min(self.fiber), self.mode_class.U_max(self.fiber))
 
