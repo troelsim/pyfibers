@@ -15,5 +15,5 @@ class TestCoupling(TestCase):
     def test_rad_coupling(self):
         coupling = RadCouplingTensor(self.fiber)
 
-        print coupling.get_coupling(self.atom_j, self.atom_k, 0, 1)
+        print coupling.get_coupling(self.atom_j, self.atom_k, 1, 1)
         print coupling.calls
