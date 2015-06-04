@@ -1,11 +1,14 @@
 from matplotlib import pyplot as plt, animation
 from pyfibers.modes.lekien import LeKienRadMode
+from pyfibers.fibers import LeKienFiber
 import numpy as np
 from copy import deepcopy
 
 radii = np.linspace(0.01, 10, 201)
 
-mode = LeKienRadMode(-1, 1.45, 1., 0.77, 1.02)
+fiber = LeKienFiber(1.45, 1, 1, 0.77)
+#mode = LeKienRadMode(-1, 1.45, 1., 0.77, 1.02)
+mode = LeKienRadMode(fiber, 1, 1.02)
 
 e_phis = mode.e_phi(radii, 0, 0)
 e_rs = mode.e_r(radii, 0, 0)
@@ -56,7 +59,7 @@ def animate(i, field, *args):
     V = np.real(e_zs*np.exp(1j*delta*i))
     C = np.sqrt(abs(U)**2+abs(V)**2)
 
-    field.set_UVC(e_rs*np.exp(1j*delta*i), e_zs*np.exp(1j*delta*i), C)
+    field.set_UVC(e_rs*np.exp(-1j*delta*i), e_zs*np.exp(-1j*delta*i), C)
 
 anim = animation.FuncAnimation(fig, animate, fargs=(field, Rs, zs), interval=10, blit=False)
 

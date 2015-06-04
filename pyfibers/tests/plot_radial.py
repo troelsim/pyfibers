@@ -1,10 +1,13 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import animation
+from pyfibers.fibers import LeKienFiber
 from pyfibers.modes.lekien import LeKienRadMode
 from pyfibers.modes.util import hankel
 
-m = LeKienRadMode(-5, 1.45, 1, 0.77, 1.06, pol=1)
+fiber = LeKienFiber(1.45, 1, 1, 1)
+#m = LeKienRadMode(-5, 1.45, 1, 0.77, 1.06, pol=1)
+m = LeKienRadMode(fiber, 1, 1.06, pol=1)
 
 Rs = np.linspace(0.01, 20, 201)
 #e_zs = hankel(2, 8, Rs)

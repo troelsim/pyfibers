@@ -51,3 +51,11 @@ def cache_for_fiber(func):
             obj._cache[key] = func(obj, *args)
         return obj._cache[key]
     return inner
+
+
+def spherical_basis(phi):
+    return np.matrix([
+        [-np.exp(-1j*phi), 1j*np.exp(1j*phi), 0         ],
+        [np.exp(-1j*phi),  1j*np.exp(1j*phi), 0         ],
+        [0,                0,                 np.sqrt(2)]
+    ], dtype='c16')/np.sqrt(2)

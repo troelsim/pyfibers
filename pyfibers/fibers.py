@@ -45,3 +45,7 @@ class LeKienFiber(Fiber):
     @property
     def rk(self):
         return self.V/np.sqrt(self.n**2-self.nc**2)
+
+    @property
+    def delta(self):
+        return (self.n**2-self.nc**2)/(2*self.n**2)

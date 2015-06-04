@@ -37,6 +37,11 @@ class LeKienRadMode(FiberMode):
         self.U = U
 
     @staticmethod
+    def get_U(fiber, rb):
+        return sqrt(fiber.n**2*fiber.rk**2 - rb**2)
+
+
+    @staticmethod
     def U_max(fiber):
         return fiber.rk*fiber.n
 
@@ -82,7 +87,7 @@ class LeKienRadMode(FiberMode):
         return exp(1j*self.f*self.rb/self.rho*z+1j*self.nu*phi)
 
     def norm(self):
-        return 2*pi*self.rk*self.rho/self.Q**2/EPSMMU*(self.nc**2*abs(self.Cj(1))**2+MU0/EPS0*abs(self.Dj(1))**2)
+        return 2*pi*self.rk*self.rho*SOL/self.Q**2/EPSMMU*(self.nc**2*abs(self.Cj(1))**2+MU0/EPS0*abs(self.Dj(1))**2)
 
 
     @property
@@ -110,29 +115,28 @@ class LeKienRadMode(FiberMode):
     def rk(self):
         return self.V/sqrt(self.n**2-self.nc**2)
 
-
     @cache_for_fiber
     def Vj(self, j):
-        return self.nu*self.rho*self.rb*self.rk / \
+        return self.nu*self.rb*self.rk / \
             (self.Q**2*self.U**2)*(self.nc**2-self.n**2)*jv(self.nu, self.U)*hankel(j, self.nu, self.Q).conjugate()
 
     @cache_for_fiber
     def Mj(self, j):
-        return self.rho/self.U*jvp(self.nu, self.U, 1)*hankel(j, self.nu, self.Q).conjugate() - \
-            self.rho/self.Q*jv(self.nu, self.U)*hankelp(j, self.nu, self.Q).conjugate()
+        return 1./self.U*jvp(self.nu, self.U, 1)*hankel(j, self.nu, self.Q).conjugate() - \
+            1./self.Q*jv(self.nu, self.U)*hankelp(j, self.nu, self.Q).conjugate()
 
     @cache_for_fiber
     def Lj(self, j):
-        return self.rho*self.n**2/self.U*jvp(self.nu, self.U, 1)*hankel(j, self.nu, self.Q).conjugate() - \
-            self.rho/self.Q*self.nc**2*jv(self.nu, self.U)*hankelp(j, self.nu, self.Q).conjugate()
+        return 1.*self.n**2/self.U*jvp(self.nu, self.U, 1)*hankel(j, self.nu, self.Q).conjugate() - \
+            1./self.Q*self.nc**2*jv(self.nu, self.U)*hankelp(j, self.nu, self.Q).conjugate()
 
     @cache_for_fiber
     def Cj(self, j):
-        return (-1)**j * 1j*pi*self.Q**2/(4*self.rho*self.nc**2)*(self.A*self.Lj(j) + 1j*MU0*SOL*self.B*self.Vj(j))
+        return (-1)**j * 1j*pi*self.Q**2/(4*self.nc**2)*(self.A*self.Lj(j) + 1j*MU0*SOL*self.B*self.Vj(j))
 
     @cache_for_fiber
     def Dj(self, j):
-        return (-1)**(j-1) * 1j*pi*self.Q**2/(4*self.rho)*(1j*EPS0*SOL*self.A*self.Vj(j) - self.B*self.Mj(j))
+        return (-1)**(j-1) * 1j*pi*self.Q**2/4*(1j*EPS0*SOL*self.A*self.Vj(j) - self.B*self.Mj(j))
 
 
 class LeKienGuidedMode(FiberMode):
@@ -254,10 +258,39 @@ class LeKienGuidedMode(FiberMode):
                     abs(self.e_z(R,0,0))**2 +
                     abs(self.e_phi(R,0,0))**2 +
                     abs(self.e_z(R,0,0))**2
-                )
+                )*self.fiber.rho**3
             ),
             0,
             inf
         )
         return result
 
+    @property
+    @cache_for_fiber
+    def P1(self):
+        U = self.U
+        W = self.W
+        return W**2/U**2 * kv(1, W)**2/jv(1, U)**2 * (
+            (1-self.s)**2 * (jv(0, U)**2 + jv(1, U)**2) +
+            (1+self.s)**2 * (jv(2, U)**2 - jv(1, U)*jv(3, U)) +
+            2*U**2/self.rb**2 * (jv(1, U)**2 - jv(0, U)*jv(2, U))
+        )
+
+    @property
+    @cache_for_fiber
+    def P2(self):
+        U = self.U
+        W = self.W
+        return (1-self.s)**2 * (kv(1, W)**2 - kv(0, W)**2) +\
+            (1+self.s)**2 * (kv(1, W)*kv(3, W) - kv(2, W)**2) +\
+            2*W**2/self.rb**2*(kv(0, W)*kv(2, W) - kv(1, W)**2)
+
+    @property
+    @cache_for_fiber
+    def closed_norm(self):
+        return 2*pi * self.fiber.rho**2 * (self.n*self.P1 + self.nc*self.P2)
+
+    @property
+    @cache_for_fiber
+    def betaprime(self):
+        return self.fiber.n**2*self.rk/self.rb/SOL * (1-2*self.fiber.delta*(1-self.P1/(self.P1+self.P2)))
