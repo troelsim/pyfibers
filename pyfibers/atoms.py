@@ -18,7 +18,8 @@ class Atom(object):
         return dipole_square * k**3 / (3*np.pi*HBAR*EPS0)
 
     def dipole_vector(self, Me, Mg):
-        return spherical_basis(self.phi) * np.matrix([self.dipole(Me, Mg, q) for q in [-1, 1, 0]]).transpose()
+        dp_cyl = np.matrix([self.dipole(Me, Mg, q) for q in [1, -1, 0]]).transpose()
+        return spherical_basis(self.phi).transpose().conjugate() * dp_cyl
 
     def dipole(self, Me, Mg, q):
         pass

@@ -15,6 +15,9 @@ class CouplingTensor(object):
     def get_coupling(self, atom_j, atom_k, nu_j, nu_k):
         pass
 
+    def get_coupling_matrix(self, atom_j, atom_k):
+        pass
+
 
 class RadCouplingTensor(CouplingTensor):
 
