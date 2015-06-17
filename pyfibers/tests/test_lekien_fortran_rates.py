@@ -4,6 +4,8 @@ import numpy as np
 from pyfibers.atoms import CesiumAtom
 from pyfibers.fibers import LeKienFiber
 from pyfibers.coupling.fortran import FortranCouplingTensor
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 
 
@@ -44,6 +46,8 @@ def rate(Me, R):
 
 Rs = np.linspace(0.9,3,201)
 plt.plot(Rs, rate(3, Rs))
-plt.semilogy()
-plt.show()
+#plt.show()
+print "Saving..."
+plt.savefig('/export/home/troelsim/ftest.png')
+print "Done!"
 print rate(3, 1)
