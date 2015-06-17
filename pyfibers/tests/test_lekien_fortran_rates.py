@@ -42,7 +42,8 @@ def rate(Me, R):
 
     return sum/dipole_strength_total
 
-Rs = np.linspace(2,20,51)
+Rs = np.linspace(0.9,3,201)
 plt.plot(Rs, rate(3, Rs))
+plt.semilogy()
 plt.show()
 print rate(3, 1)
