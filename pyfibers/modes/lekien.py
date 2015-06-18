@@ -87,7 +87,7 @@ class LeKienRadMode(FiberMode):
         return exp(1j*self.f*self.rb/self.rho*z+1j*self.nu*phi)
 
     def norm(self):
-        return 2*pi*self.rk*self.rho*SOL/self.Q**2/EPSMMU*(self.nc**2*abs(self.Cj(1))**2+MU0/EPS0*abs(self.Dj(1))**2)
+        return 8*pi*self.rk*self.rho*SOL/self.Q**2*(self.nc**2*abs(self.Cj(1))**2+MU0/EPS0*abs(self.Dj(1))**2)
 
 
     @property

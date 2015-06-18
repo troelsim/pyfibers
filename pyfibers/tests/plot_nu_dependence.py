@@ -1,5 +1,6 @@
 from matplotlib import pyplot as plt, animation
 from pyfibers.modes.lekien import LeKienRadMode
+from pyfibers.atoms import SimpleAtom
 from pyfibers.fibers import LeKienFiber
 import numpy as np
 

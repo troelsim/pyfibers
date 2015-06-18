@@ -4,8 +4,9 @@ import numpy as np
 from pyfibers.atoms import CesiumAtom
 from pyfibers.fibers import LeKienFiber
 from pyfibers.coupling.fortran import FortranCouplingTensor
+from pyfibers.atoms import SimpleAtom
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 
 
@@ -24,8 +25,9 @@ fiber = LeKienFiber(n, nc, rho, rho*k*sqrt(n**2-nc**2))
 Fe = CesiumAtom.Fe
 Fg = CesiumAtom.Fg
 
-@np.vectorize
-def rate(Me, R):
+Me = 3
+#@np.vectorize
+def rate(R):
     atom = CesiumAtom(R, 0, 0)
     Mgs = set(range(Me-1,Me+2)) & set(range(-Fg, Fg+1))
     sum = 0
@@ -44,10 +46,17 @@ def rate(Me, R):
 
     return sum/dipole_strength_total
 
-Rs = np.linspace(0.9,3,201)
-plt.plot(Rs, rate(3, Rs))
-#plt.show()
+
+
+from multiprocessing import Pool
+p=Pool(5)
+Rs = np.linspace(1.0,10,51)
+es = p.map(rate, Rs)
+
+plt.plot(Rs, es)
+plt.semilogy()
+plt.show()
 print "Saving..."
-plt.savefig('/export/home/troelsim/ftest.png')
+#plt.savefig('/Users/troelsim/ftest.png')
 print "Done!"
 print rate(3, 1)
