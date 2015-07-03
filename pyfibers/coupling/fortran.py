@@ -31,7 +31,7 @@ class FortranCouplingTensor(CouplingTensor):
         :return:
         """
         coupling_matrix = np.zeros((3, 3), dtype='c16')
-        for f in [-1,1]:
+        for f in [-1, 1]:
             for pol in [-1, 1]:
                 for m in [-5, 6]:
                     fibers.init_mode(m, self.fiber.V, pol, f)

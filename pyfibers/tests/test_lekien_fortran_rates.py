@@ -55,8 +55,7 @@ es = p.map(rate, Rs)
 
 plt.plot(Rs, es)
 plt.semilogy()
-plt.show()
+#plt.show()
 print "Saving..."
-#plt.savefig('/Users/troelsim/ftest.png')
+plt.savefig('/Users/troelsim/ftest.png')
 print "Done!"
-print rate(3, 1)

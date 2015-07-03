@@ -109,7 +109,7 @@ class LeKienRadMode(FiberMode):
     def rb(self):
         Q = self.Q
         U = self.U
-        return sqrt((U**2*self.nc**2 - Q**2*self.n**2)/(self.n**2-self.nc**2))
+        return self.f*sqrt((U**2*self.nc**2 - Q**2*self.n**2)/(self.n**2-self.nc**2))
 
     @property
     def rk(self):
@@ -195,9 +195,10 @@ class LeKienGuidedMode(FiberMode):
         return self.fiber.V/sqrt(self.fiber.n**2-self.fiber.nc**2)
 
     @classmethod
-    def getUW(cls, fiber):
-        upper_limit  = fiber.V-cls.min_W
-        lower_limit = cls.min_W
+    def getUW(cls, fiber, upper_limit=None, lower_limit=None):
+        if not (lower_limit and upper_limit):
+            upper_limit = fiber.V-cls.min_W
+            lower_limit = cls.min_W
 
         result, r = brentq(lambda W: cls.eigenvalue_equation(fiber, W), lower_limit, upper_limit, full_output=True)
 
