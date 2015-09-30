@@ -3,7 +3,7 @@ from .util import hankel, hankelp, cache_for_fiber
 from scipy.special import jv, jvp, kv, kvp
 from scipy.optimize import brentq
 from scipy.integrate import quad
-from numpy import sqrt, pi, exp, inf
+from numpy import sqrt, pi, exp, inf, linspace
 
 from pyfibers.constants import *
 
@@ -143,6 +143,10 @@ class LeKienGuidedMode(FiberMode):
 
     min_W = 1e-10
 
+    class NoSolutionsFoundException(BaseException):
+        def __init__(self, s=""):
+            self.message = s
+
     def __init__(self, fiber, pol, f):
         self.fiber = fiber
         self.n = fiber.n
@@ -163,7 +167,6 @@ class LeKienGuidedMode(FiberMode):
         U = sqrt(fiber.V**2 - W**2)
         j0 = jv(0, U)
         j1 = jv(1, U)
-        k0 = kv(0, W)
         k1 = kv(1, W)
         k1p = kvp(1, W, 1)
         return (
@@ -195,17 +198,48 @@ class LeKienGuidedMode(FiberMode):
         return self.fiber.V/sqrt(self.fiber.n**2-self.fiber.nc**2)
 
     @classmethod
-    def getUW(cls, fiber, upper_limit=None, lower_limit=None):
-        if not (lower_limit and upper_limit):
-            upper_limit = fiber.V-cls.min_W
-            lower_limit = cls.min_W
+    def getUW(cls, fiber):
+        """
+        We have to solve the eigenvalue equaition, which can have a singularity
+        and zero or more solutions.
+        As it turns out, the right solution is when the function is increasing.
+        The at the singularity s, f goes to infinity for x->s+ and -inf for x->s-, meaning
+        an interval (a, b) will contain the solution if f(a)<0 and f(b)>0 and a and b are close
+        :param fiber:
+        :return:
+        """
+        L = 2.405
+        upper_limit = fiber.V-cls.min_W
+        lower_limit = cls.min_W
+        if fiber.V > L:
+            lower_limit = sqrt(fiber.V**2-L**2)
 
-        result, r = brentq(lambda W: cls.eigenvalue_equation(fiber, W), lower_limit, upper_limit, full_output=True)
+        test_ws = linspace(lower_limit, upper_limit, 101)
 
-        if r.converged:
-            return sqrt(fiber.V**2-result**2), result
-        else:
-            return None, None
+        previous_val = 0
+        previous_w = 0
+
+        solutions = []
+
+        for w in test_ws:
+            val = cls.eigenvalue_equation(fiber, w)
+            if previous_val * val < 0:
+                result, r = brentq(lambda W: cls.eigenvalue_equation(fiber, W), previous_w, w, full_output=True)
+                unfitness = (abs(val)+abs(previous_val))  # Unlikely to be a root if this is high
+                if r.converged:
+                    #print "unfitness %f" % unfitness
+                    solutions.append((sqrt(fiber.V**2 - result**2), result, unfitness))
+                else:
+                    raise cls.NoSolutionsFoundException("Brent could not help you")
+            previous_val = val
+            previous_w = w
+        if solutions:
+            #print "%d solution(s)" % len(solutions)
+            for U, W, unfitness in solutions[::-1]:
+                if unfitness < 1:
+                    return U, W
+
+        raise cls.NoSolutionsFoundException("No solution found")
 
     @property
     def s(self):
@@ -295,3 +329,8 @@ class LeKienGuidedMode(FiberMode):
     @cache_for_fiber
     def betaprime(self):
         return self.fiber.n**2*self.rk/self.rb/SOL * (1-2*self.fiber.delta*(1-self.P1/(self.P1+self.P2)))
+
+    @property
+    @cache_for_fiber
+    def eta(self):
+        return self.P1/(self.P2 + self.P1)
