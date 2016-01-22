@@ -1,6 +1,6 @@
 import os
 class plotter(object):
-    FIGURE_PATH = '/Users/troelsim/speciale/speciale/figures/'
+    FIGURE_PATH = '/Users/troelsim/speciale/figures/'
 
     def __init__(self, name):
         self.name = name

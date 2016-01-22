@@ -57,7 +57,12 @@ class RadCouplingTensor(CouplingTensor):
             self.calls += 1
             return coupling[0, 0]
 
-        return quad(lambda x: np.real(integrand(x)), 0, self.fiber.nc*self.fiber.rk)
+        res, err = quad(lambda x: np.real(integrand(x)), 0.01*self.fiber.rk, self.fiber.nc*self.fiber.rk*0.99)
+        try:
+            print "Relative error in integral: %e" % err/res
+        except TypeError:
+            print res, err
+        return res
 
     def get_coupling_matrix(self, atom_j, atom_k):
         """
@@ -156,3 +161,78 @@ if __name__ == '__main__':
     tr = RadCouplingTensor(f)
     print t.get_coupling_matrix(a1, a2)
     print tr.get_coupling_matrix(a1, a2)
+
+
+def get_coupling_matrix(fiber, r, zs, phis):
+    # Get the (guided) coupling matrix for a given fiber
+    assert len(zs) == len(phis)
+    num_atoms = len(zs)
+    from pyfibers.modes.lekien import LeKienGuidedMode
+    mode = LeKienGuidedMode(fiber, pol=1, f=1)
+    e_r = -1j*mode.e_r(r, 0, 0)
+    e_phi = mode.e_phi(r, 0, 0)
+    e_z = mode.e_z(r, 0, 0)
+
+    def spherical_basis(phi):
+        return np.array([
+            [-np.exp(1j*phi), np.exp(1j*phi), 0],
+            [-1j*np.exp(-1j*phi), -1j*np.exp(-1j*phi), 0],
+            [0, 0, np.sqrt(2)]
+        ])/np.sqrt(2)
+
+    coupling_matrix = np.zeros((3*num_atoms, 3*num_atoms), dtype='complex')
+    def sub_matrix(l, j):
+        dz = zs[l]-zs[j]
+        phil = phis[l]
+        phij = phis[j]
+        dphi = phis[l]-phis[j]
+        b = mode.rb/fiber.rho
+        cosb = np.cos(b*dz)
+        cosphi = np.cos(dphi)
+        sinb = np.sin(b*dz)
+        sinphi = np.sin(dphi)
+        mat = np.zeros((3,3), dtype='complex')
+        return np.dot(spherical_basis(phil), np.dot(np.array([
+            [e_r**2*cosb*cosphi, -e_r*e_phi*cosb*sinphi, -e_r*e_z*sinb*cosphi],
+            [e_phi*e_r*cosb*sinphi, e_phi**2*cosb*cosphi, e_phi*e_z*sinb*sinphi],
+            [e_z*e_r*sinb*cosphi, e_z*e_phi*sinb*sinphi, e_z**2*cosb*cosphi]
+        ]), spherical_basis(phij).transpose().conjugate()))
+
+    for l in range(num_atoms):
+        for j in range(num_atoms):
+            coupling_matrix[3*l:3*(l+1), 3*j:3*(j+1)] = sub_matrix(l, j)
+
+    return coupling_matrix
+
+
+def get_e_matrix(fiber, r, zs, phis, Vmin=0.1, Vmax=2.405):
+    V0 = fiber.V
+    N = len(zs)
+    from pyfibers.fibers import LeKienFiber
+    def matrix_el(i, j):
+        def integrand(V):
+            fib = LeKienFiber(fiber.n, fiber.nc, fiber.rho, V)
+            return get_coupling_matrix(fib, r, zs, phis)[i,j]*V/(V-V0)
+        def fold(x):
+            # fold the functino around V0
+            return integrand(V0+x) + integrand(V0-x)
+        eps=0.1
+        i1, p1 = quad(integrand, Vmin, V0-eps)
+        print i1, p1
+        i2, p2 = quad(fold, 0, eps)
+        print i2, p2
+        i3, p3 = quad(integrand, V0+eps, Vmax)
+        print i3, p3
+        print i1 + i2 + i3
+        return i1 + i2 + i3
+    res = np.zeros((3*N, 3*N), dtype='complex')
+    for i in range(0, 3*N):
+        for j in range(0, 3*N):
+            res[i,j] = matrix_el(i, j)
+    return res
+
+def get_e_eigenvalue(fiber, r, dz):
+    mat = get_e_matrix(fiber, r, [0, dz], [0, 0], Vmin=0.76, Vmax=2.405)
+    eigs, eigvecs = np.linalg.eigh(mat)
+    return eigs
+
